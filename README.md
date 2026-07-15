@@ -51,6 +51,35 @@ gatekeep/
 *   [Node.js](https://nodejs.org/) (v18.0.0 or higher recommended)
 *   [MySQL](https://www.mysql.com/) (Local server or AWS RDS instance)
 
+### AWS MySQL RDS Database Setup (Recommended)
+If you want to host your database in the cloud using Amazon Web Services (AWS) Relational Database Service (RDS):
+
+1. **Create Instance:**
+   - Log in to the **AWS Console** and search for **RDS**.
+   - Click **Create database** -> Choose **Standard create** -> select **MySQL**.
+   - Select **Free Tier** under templates (uses `db.t3.micro`/`db.t4g.micro` with 20GB storage, which is free for the first 12 months).
+   - Enter a **DB instance identifier** (e.g., `gatekeep-db-mysql`).
+   - Define a **Master username** (e.g., `admin`) and a secure **Master password**. (Save these).
+
+2. **Configure Connectivity (Crucial for remote access):**
+   - Under *Connectivity*, select your VPC (Default VPC is recommended for simple testing).
+   - Set **Publicly accessible** to **Yes**. *(This instructs AWS to assign a public IP address to the database).*
+   - Set **VPC security group** to **Create new** and give it a name (e.g., `gatekeep-rds-sg`).
+   - Under *Additional configuration*, enter `gatekeep_db` in **Initial database name**.
+   - Click **Create database** (Takes 2–5 minutes until status becomes `Available`).
+
+3. **Open Inbound Port (Firewall):**
+   - Click on your created database instance -> Look under the **Connectivity & security** tab.
+   - Click the link under **VPC security groups**.
+   - Select the group -> click **Inbound rules** -> click **Edit inbound rules**.
+   - Add a rule:
+     - **Type:** `MySQL/Aurora` (Port `3306`)
+     - **Source:** Select **My IP** (secure, only allows your current location) or **Anywhere-IPv4** (`0.0.0.0/0` - allows connection from any hosting service).
+   - Save the rules.
+
+4. **Retrieve Connection Endpoint:**
+   - Go back to RDS Database details -> copy the **Endpoint** address (e.g., `gatekeep-db-mysql.xxxxxx.us-east-1.rds.amazonaws.com`). Use this as `DB_HOST` in your server `.env` configuration.
+
 ### 1. Repository Setup
 Clone the repository and install all workspace dependencies from the root directory:
 ```bash
