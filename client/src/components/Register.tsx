@@ -12,7 +12,7 @@ export const Register: React.FC = () => {
   const [localError, setLocalError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   
-  const { register, error, clearError, loading, isAuthenticated } = useAuth();
+  const { register, error, clearError, loading, isAuthenticated, dbConnected } = useAuth();
   const navigate = useNavigate();
 
   // Clear errors when navigating away or changing inputs
@@ -200,6 +200,12 @@ export const Register: React.FC = () => {
                   Sign in instead
                 </Link>
               </p>
+              <div className="db-status-container">
+                <span className={`db-status-dot ${dbConnected ? 'connected' : dbConnected === false ? 'disconnected' : 'checking'}`}></span>
+                <span className="db-status-text">
+                  Database: {dbConnected === null ? 'Checking connectivity...' : dbConnected ? 'Connected (AWS RDS)' : 'Disconnected (Offline)'}
+                </span>
+              </div>
             </div>
           </>
         )}

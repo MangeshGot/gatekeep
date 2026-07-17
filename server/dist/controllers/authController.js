@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getMe = exports.login = exports.register = void 0;
+exports.getDbStatus = exports.getMe = exports.login = exports.register = void 0;
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const db_1 = __importDefault(require("../config/db"));
@@ -113,3 +113,16 @@ const getMe = async (req, res) => {
     }
 };
 exports.getMe = getMe;
+// Check database connection status dynamically
+const getDbStatus = async (req, res) => {
+    try {
+        const connection = await db_1.default.getConnection();
+        connection.release();
+        res.status(200).json({ connected: true });
+    }
+    catch (error) {
+        console.error('DB Status check error:', error);
+        res.status(200).json({ connected: false, message: error.message || 'Unable to connect to database' });
+    }
+};
+exports.getDbStatus = getDbStatus;

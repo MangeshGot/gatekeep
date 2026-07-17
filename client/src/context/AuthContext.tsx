@@ -14,10 +14,12 @@ interface AuthContextType {
   loading: boolean;
   error: string | null;
   isAuthenticated: boolean;
+  dbConnected: boolean | null;
   login: (email: string, password: string) => Promise<void>;
   register: (username: string, email: string, password: string) => Promise<void>;
   logout: () => void;
   clearError: () => void;
+  checkDbStatus: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -29,6 +31,26 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [dbConnected, setDbConnected] = useState<boolean | null>(null);
+
+  // Check database connection status dynamically
+  const checkDbStatus = async () => {
+    try {
+      const response = await fetch(`${API_URL}/db-status`);
+      if (response.ok) {
+        const data = await response.json();
+        setDbConnected(data.connected);
+      } else {
+        setDbConnected(false);
+      }
+    } catch (err) {
+      setDbConnected(false);
+    }
+  };
+
+  useEffect(() => {
+    checkDbStatus();
+  }, []);
 
   // Clear errors helper
   const clearError = () => setError(null);
@@ -136,10 +158,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         loading,
         error,
         isAuthenticated: !!user,
+        dbConnected,
         login,
         register,
         logout,
         clearError,
+        checkDbStatus,
       }}
     >
       {children}

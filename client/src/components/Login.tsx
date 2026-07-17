@@ -9,7 +9,7 @@ export const Login: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
   
-  const { login, error, clearError, loading, isAuthenticated } = useAuth();
+  const { login, error, clearError, loading, isAuthenticated, dbConnected } = useAuth();
   const navigate = useNavigate();
 
   // Clear errors when navigating away or changing inputs
@@ -131,6 +131,12 @@ export const Login: React.FC = () => {
               Create an account
             </Link>
           </p>
+          <div className="db-status-container">
+            <span className={`db-status-dot ${dbConnected ? 'connected' : dbConnected === false ? 'disconnected' : 'checking'}`}></span>
+            <span className="db-status-text">
+              Database: {dbConnected === null ? 'Checking connectivity...' : dbConnected ? 'Connected (AWS RDS)' : 'Disconnected (Offline)'}
+            </span>
+          </div>
         </div>
       </div>
     </div>

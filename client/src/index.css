@@ -608,3 +608,61 @@ code, pre, .font-mono {
     grid-template-columns: 1fr;
   }
 }
+
+/* ==========================================
+   DATABASE STATUS BADGES
+   ========================================== */
+.db-status-container {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 6px 14px;
+  background-color: rgba(9, 13, 22, 0.4);
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  font-size: 11px;
+  transition: border-color var(--transition-fast);
+}
+
+.db-status-container:hover {
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.db-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.db-status-dot.connected {
+  background-color: var(--success);
+  box-shadow: 0 0 8px var(--success);
+}
+
+.db-status-dot.disconnected {
+  background-color: var(--error);
+  box-shadow: 0 0 8px var(--error);
+}
+
+.db-status-dot.checking {
+  background-color: var(--text-muted);
+  animation: pulse-checking 1s infinite alternate;
+}
+
+@keyframes pulse-checking {
+  0% {
+    opacity: 0.4;
+    transform: scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+}
+
+.db-status-text {
+  color: var(--text-secondary);
+  font-weight: 500;
+  font-family: var(--font-sans);
+}

@@ -142,3 +142,15 @@ export const getMe = async (req: AuthRequest, res: Response): Promise<void> => {
     res.status(500).json({ message: 'Internal server error fetching user profile.' });
   }
 };
+
+// Check database connection status dynamically
+export const getDbStatus = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const connection = await pool.getConnection();
+    connection.release();
+    res.status(200).json({ connected: true });
+  } catch (error: any) {
+    console.error('DB Status check error:', error);
+    res.status(200).json({ connected: false, message: error.message || 'Unable to connect to database' });
+  }
+};
