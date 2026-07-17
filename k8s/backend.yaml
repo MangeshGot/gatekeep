@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gatekeep-backend
+  labels:
+    app: gatekeep-backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: gatekeep-backend
+  template:
+    metadata:
+      labels:
+        app: gatekeep-backend
+    spec:
+      containers:
+        - name: backend
+          image: 570197775598.dkr.ecr.us-east-1.amazonaws.com/gatekeep-api:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 5000
+          env:
+            - name: PORT
+              value: "5000"
+            - name: DB_HOST
+              value: "gatekeep-db-mysql.c05qe4y2yvys.us-east-1.rds.amazonaws.com"
+            - name: DB_PORT
+              value: "3306"
+            - name: DB_USER
+              value: "admin"
+            - name: DB_PASSWORD
+              value: "8AyD>i9L-}=BFkG6n1=:"
+            - name: DB_NAME
+              value: "gatekeep_db"
+            - name: JWT_SECRET
+              value: "super_secret_key_change_me_in_production_12345"
+            - name: JWT_EXPIRES_IN
+              value: "24h"
+          resources:
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+            requests:
+              cpu: "250m"
+              memory: "256Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gatekeep-backend-service
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 5000
+      targetPort: 5000
+      protocol: TCP
+  selector:
+    app: gatekeep-backend

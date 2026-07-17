@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gatekeep-frontend
+  labels:
+    app: gatekeep-frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: gatekeep-frontend
+  template:
+    metadata:
+      labels:
+        app: gatekeep-frontend
+    spec:
+      containers:
+        - name: frontend
+          image: 570197775598.dkr.ecr.us-east-1.amazonaws.com/gatekeep-frontend:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 80
+          resources:
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+            requests:
+              cpu: "250m"
+              memory: "128Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gatekeep-frontend-service
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 80
+      targetPort: 80
+      protocol: TCP
+  selector:
+    app: gatekeep-frontend
