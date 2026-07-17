@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { LogOut, User, Shield, Key, Activity } from 'lucide-react';
 
 export const Dashboard: React.FC = () => {
-  const { user, token, logout } = useAuth();
+  const { user, token, logout, dbConnected } = useAuth();
 
   const getMaskedToken = () => {
     if (!token) return 'No token stored';
@@ -86,10 +86,19 @@ export const Dashboard: React.FC = () => {
                 <span className="detail-value">HMAC SHA256</span>
               </div>
               <div className="detail-item">
-                <span className="detail-label">Status</span>
+                <span className="detail-label">Session Status</span>
                 <div className="status-indicator">
                   <span className="status-dot"></span>
-                  <span className="detail-value">Session Active</span>
+                  <span className="detail-value">Active</span>
+                </div>
+              </div>
+              <div className="detail-item">
+                <span className="detail-label">Database Connection</span>
+                <div className="status-indicator">
+                  <span className={`db-status-dot ${dbConnected ? 'connected' : dbConnected === false ? 'disconnected' : 'checking'}`}></span>
+                  <span className="detail-value">
+                    {dbConnected === null ? 'Checking...' : dbConnected ? 'Connected (AWS RDS)' : 'Disconnected'}
+                  </span>
                 </div>
               </div>
             </div>

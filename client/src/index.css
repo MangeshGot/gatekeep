@@ -630,9 +630,10 @@ code, pre, .font-mono {
 }
 
 .db-status-dot {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
+  flex-shrink: 0;
 }
 
 .db-status-dot.connected {
