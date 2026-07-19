@@ -66,6 +66,7 @@ jobs:
           TOKEN: ${{ secrets.CHART_REPO_TOKEN }}
         run: |
           # Clone the chart repo
+          echo "Token length is: ${#TOKEN}"
           git clone https://x-access-token:${TOKEN}@github.com/MangeshGot/gatekeep-chart.git
           cd gatekeep-chart
           # Update API tag
