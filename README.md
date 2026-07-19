@@ -140,6 +140,15 @@ npm run dev
 
 ---
 
+## ☸️ Helm Deployment
+
+The application can also be deployed to a Kubernetes cluster using the Helm chart. The Helm chart repository is hosted separately at:
+🔗 **[gatekeep-chart Repository](https://github.com/MangeshGot/gatekeep-chart)**
+
+For instructions on how to use, configure, and install the Helm chart, please refer to the `README.md` in the **gatekeep-chart** repository.
+
+---
+
 ## ☸️ Kubernetes & EKS Deployment Troubleshooting
 
 ### AWS ALB Ingress: "failed to refresh cached credentials, no EC2 IMDS role found"
