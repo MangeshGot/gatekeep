@@ -9,20 +9,76 @@ permissions:
   contents: read
 env:
   AWS_REGION: us-east-1
+  ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+  ECR_REPOSITORY: gatekeep-api # Matching your ECR repo
+  IMAGE_TAG: ${{ github.sha }}
 
 jobs:
   deploy:
     name: Build & Push
     runs-on: ubuntu-latest
+    outputs:
+      app_version: ${{ steps.get_version.outputs.version }}
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+
       - name: Configure AWS Credentials via OIDC
         uses: aws-actions/configure-aws-credentials@v4.1.0
         with:
           audience: sts.amazonaws.com
           aws-region: ${{ env.AWS_REGION }}
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
-      - name: Test AWS Credentials
-        run: aws sts get-caller-identity
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Get Build Number
+        id: get_version
+        run: |
+          VERSION=$(jq -r .version ./client/package.json)
+          echo "APP_VERSION=$VERSION" >> $GITHUB_ENV
+
+      # --- Build and Push API (Server) ---
+      - name: Build and push API
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: gatekeep-api # Matching your ECR repo
+          IMAGE_TAG: ${{ env.APP_VERSION }}-build.${{ github.run_number }}
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG ./server
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+      # --- Build and Push Frontend (Client) ---
+      - name: Build and push Frontend
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: gatekeep-frontend # Matching your ECR repo
+          IMAGE_TAG: ${{ env.APP_VERSION }}-build.${{ github.run_number }}
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG ./client
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+      - name: Update Chart Values
+        env:
+          # Use the same tag format you used for building
+          NEW_TAG: ${{ env.APP_VERSION }}-build.${{ github.run_number }}
+          TOKEN: ${{ secrets.CHART_REPO_TOKEN }}
+        run: |
+          # Clone the chart repo
+          git clone https://x-access-token:${TOKEN}@github.com/MangeshGot/gatekeep-chart.git
+          cd gatekeep-chart
+          # Update API tag
+          sed -i "/frontend:/,/tag:/s/tag: .*/tag: $NEW_TAG/" values.yaml
+
+          # Update Frontend tag
+          sed -i "/backend:/,/tag:/s/tag: .*/tag: $NEW_TAG/" values.yaml
+
+          # Commit and push
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add values.yaml
+          git commit -m "Update image tag to $NEW_TAG"
+          git push
