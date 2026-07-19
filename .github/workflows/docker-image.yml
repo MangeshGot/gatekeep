@@ -23,6 +23,6 @@ jobs:
         with:
           audience: sts.amazonaws.com
           aws-region: ${{ env.AWS_REGION }}
-          role-to-assume: arn:aws:iam::570197775598:role/GitHubActions-ECR-Push-Role
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
       - name: Test AWS Credentials
         run: aws sts get-caller-identity
