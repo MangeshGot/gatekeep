@@ -137,3 +137,38 @@ npm run dev
 2.  **Stateless Session Validation:** JWTs are issued upon login with a preset expiration period (`JWT_EXPIRES_IN`). Token validity is parsed cryptographically without querying the database for every action, optimizing processing time.
 3.  **Encrypted Sign-up Passwords:** Hashes plain-text passwords using a cryptographically secure hash function (`bcryptjs`) before saving to persistent storage.
 4.  **Database Protection:** Prevents SQL Injection attacks by compiling prepared statements and binding request payloads to SQL placeholders.
+
+---
+
+## ☸️ Kubernetes & EKS Deployment Troubleshooting
+
+### AWS ALB Ingress: "failed to refresh cached credentials, no EC2 IMDS role found"
+
+If you deploy the application using the [ingress.yaml](file:///home/mangesh/Documents/gatekeep/k8s/ingress.yaml) configuration on AWS EKS and notice that the Application Load Balancer (ALB) is not being provisioned (its `ADDRESS` column remains empty), check the logs of your controller pods:
+```bash
+kubectl logs -n kube-system deployment/aws-load-balancer-controller --tail=100
+```
+If you see the error:
+`failed to refresh cached credentials, no EC2 IMDS role found`
+
+#### **Reason**:
+The `aws-load-balancer-controller` pods run under a ServiceAccount of the same name in the `kube-system` namespace. If EKS Pod Identity is enabled, the EKS Pod Identity Agent needs an explicit **Association** mapping that ServiceAccount to the IAM Role containing the load balancer controller permissions. If it's missing, the controller cannot authenticate to AWS.
+
+#### **Solution**:
+Create the missing Pod Identity Association for the controller using the AWS CLI:
+
+```bash
+aws eks create-pod-identity-association \
+  --cluster-name <your-cluster-name> \
+  --namespace kube-system \
+  --service-account aws-load-balancer-controller \
+  --role-arn arn:aws:iam::<your-account-id>:role/<your-pod-identity-role> \
+  --region <your-region>
+```
+
+Then, restart the load balancer controller deployment to apply the new credentials:
+```bash
+kubectl rollout restart deployment -n kube-system aws-load-balancer-controller
+```
+Once restarted, the controller will automatically talk to the AWS API, create the target groups, and provision the Load Balancer endpoint.
+

@@ -1,0 +1,38 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: gatekeep-ingress
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+spec:
+  ingressClassName: alb
+  rules:
+    - http:
+        paths:
+          # Route all API traffic to the backend service
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: gatekeep-backend-service
+                port:
+                  number: 5000
+
+          # Route backend health checks to the backend service
+          - path: /health
+            pathType: Exact
+            backend:
+              service:
+                name: gatekeep-backend-service
+                port:
+                  number: 5000
+
+          # Route all other traffic to the frontend client
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: gatekeep-frontend-service
+                port:
+                  number: 8080

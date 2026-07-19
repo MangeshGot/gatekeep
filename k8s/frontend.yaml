@@ -16,26 +16,19 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: 570197775598.dkr.ecr.us-east-1.amazonaws.com/gatekeep-frontend:latest
+          image: mangeshforstudy/gatekeep-frontend:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 80
-          resources:
-            limits:
-              cpu: "500m"
-              memory: "256Mi"
-            requests:
-              cpu: "250m"
-              memory: "128Mi"
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: gatekeep-frontend-service
 spec:
-  type: LoadBalancer
+  type: NodePort
   ports:
-    - port: 80
+    - port: 8080
       targetPort: 80
       protocol: TCP
   selector:

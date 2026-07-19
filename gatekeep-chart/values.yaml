@@ -1,0 +1,27 @@
+frontend:
+  name: gatekeep-frontend
+  replicas: 2
+  image: mangeshforstudy/gatekeep-frontend
+  tag: latest
+  aws_repo_url: 570197775598.dkr.ecr.us-east-1.amazonaws.com
+  service_type: NodePort
+
+backend:
+  name: gatekeep-api
+  replicas: 2
+  image: mangeshforstudy/gatekeep-api
+  tag: latest
+  aws_repo_url: 570197775598.dkr.ecr.us-east-1.amazonaws.com
+  service_type: NodePort
+  containerPort: 5000
+
+db:
+  host: "gatekeep-db-mysql.c05qe4y2yvys.us-east-1.rds.amazonaws.com"
+  port: "3306"
+  user: "admin"
+  password: "8AyD>i9L-}=BFkG6n1=:"
+  name: "gatekeep_db"
+
+  jwt:
+    secret: "super_secret_key_change_me_in_production_12345"
+    expiresIn: "24h"
