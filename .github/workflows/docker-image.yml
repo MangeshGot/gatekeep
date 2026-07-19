@@ -9,9 +9,6 @@ permissions:
   contents: read
 env:
   AWS_REGION: us-east-1
-  ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-  ECR_REPOSITORY: gatekeep-api # Matching your ECR repo
-  IMAGE_TAG: ${{ github.sha }}
 
 jobs:
   deploy:
@@ -40,6 +37,7 @@ jobs:
         run: |
           VERSION=$(jq -r .version ./client/package.json)
           echo "APP_VERSION=$VERSION" >> $GITHUB_ENV
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       # --- Build and Push API (Server) ---
       - name: Build and push API
