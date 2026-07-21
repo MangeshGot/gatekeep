@@ -179,5 +179,222 @@ Then, restart the load balancer controller deployment to apply the new credentia
 ```bash
 kubectl rollout restart deployment -n kube-system aws-load-balancer-controller
 ```
-Once restarted, the controller will automatically talk to the AWS API, create the target groups, and provision the Load Balancer endpoint.
+
+---
+
+## 🔐 AWS Secrets Manager Integration via External Secrets Operator (ESO) & IRSA
+
+This section explains how to integrate AWS Secrets Manager with your EKS cluster using **External Secrets Operator (ESO)** and **IRSA (IAM Roles for Service Accounts)**.
+
+### 1. Register OIDC Provider (if missing)
+
+Ensure your EKS cluster has an IAM OIDC provider associated with it:
+
+```bash
+eksctl utils associate-iam-oidc-provider \
+  --cluster mangesh-cluster \
+  --region us-east-1 \
+  --approve
+```
+
+---
+
+### 2. IAM Role & Trust Relationship Configuration
+
+Create an IAM Role (`ESO-IRSA-Role`) with a trust policy allowing the Kubernetes ServiceAccount (`external-secrets-sa`) in the `external-secrets` namespace to assume the role via OIDC web identity:
+
+**Trust Policy JSON (`Trust-Policy.json`):**
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Federated": "arn:aws:iam::570197775598:oidc-provider/oidc.eks.us-east-1.amazonaws.com/id/CF02F5C42C89697E713845CE60B4B2AC"
+      },
+      "Action": "sts:AssumeRoleWithWebIdentity",
+      "Condition": {
+        "StringEquals": {
+          "oidc.eks.us-east-1.amazonaws.com/id/CF02F5C42C89697E713845CE60B4B2AC:sub": "system:serviceaccount:external-secrets:external-secrets-sa",
+          "oidc.eks.us-east-1.amazonaws.com/id/CF02F5C42C89697E713845CE60B4B2AC:aud": "sts.amazonaws.com"
+        }
+      }
+    }
+  ]
+}
+```
+
+**Permissions Policy:** Attach an IAM policy granting `secretsmanager:GetSecretValue` permissions for your target secrets.
+
+---
+
+### 3. Deploying External Secrets Operator via Helm
+
+**`helm-secret.yaml` Values Configuration:**
+
+```yaml
+installCRDs: true
+serviceAccount:
+  create: true
+  name: external-secrets-sa
+  annotations:
+    eks.amazonaws.com/role-arn: "arn:aws:iam::570197775598:role/ESO-IRSA-Role"
+```
+
+**Install / Upgrade Command:**
+
+```bash
+helm upgrade --install external-secrets external-secrets/external-secrets \
+  -n external-secrets \
+  --create-namespace \
+  -f helm-secret.yaml
+```
+
+---
+
+### 4. Applying the SecretStore
+
+When using IRSA, the AWS SDK auto-discovers mounted token environment variables (`AWS_ROLE_ARN` and `AWS_WEB_IDENTITY_TOKEN_FILE`), so an explicit `auth` block inside the `SecretStore` is optional.
+
+**`secretstore.yaml`:**
+
+```yaml
+apiVersion: external-secrets.io/v1
+kind: SecretStore
+metadata:
+  name: aws-secret-manager-store
+  namespace: external-secrets
+spec:
+  provider:
+    aws:
+      service: SecretsManager
+      region: us-east-1
+```
+
+**Apply and Verify:**
+
+```bash
+kubectl apply -f secretstore.yaml
+
+# Check status (Should show STATUS: Valid and READY: True)
+kubectl get secretstore aws-secret-manager-store -n external-secrets
+```
+
+---
+
+### 5. Creating the ExternalSecret
+
+Maps keys from AWS Secrets Manager (`myawssecrete`) into a Kubernetes Secret (`myawssecrete-k8s`).
+
+**`externalsecret.yaml`:**
+
+```yaml
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: my-aws-external-secret
+  namespace: external-secrets
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: aws-secret-manager-store
+    kind: SecretStore
+  target:
+    name: myawssecrete-k8s
+    creationPolicy: Owner
+  data:
+    - secretKey: aws_repo_url
+      remoteRef:
+        key: myawssecrete
+        property: aws_repo_url
+    - secretKey: host
+      remoteRef:
+        key: myawssecrete
+        property: host
+    - secretKey: password
+      remoteRef:
+        key: myawssecrete
+        property: password
+```
+
+**Apply and Verify:**
+
+```bash
+kubectl apply -f externalsecret.yaml
+
+# Confirm synchronization status
+kubectl get externalsecret my-aws-external-secret -n external-secrets
+kubectl get secret myawssecrete-k8s -n external-secrets
+```
+
+---
+
+### 6. GitOps Integration with ArgoCD & Helm (`gatekeep-chart`)
+
+**ArgoCD Application Manifest (`application.yaml`):**
+
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: gatekeep-app
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: 'https://github.com/MangeshGot/gatekeep-chart.git'
+    targetRevision: HEAD
+    path: '.'
+    helm:
+      valueFiles:
+        - values.yaml
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: gatekeep
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+```
+
+**Referencing Synced Secrets in Container Workloads:**
+
+In your backend deployment manifest (`templates/backend-deployment.yaml`), pull secret values directly from the generated Kubernetes secret:
+
+```yaml
+env:
+  - name: DB_PORT
+    value: {{ .Values.db.port | quote }}
+  - name: DB_USER
+    value: {{ .Values.db.user | quote }}
+  - name: DB_NAME
+    value: {{ .Values.db.name | quote }}
+  - name: DB_HOST
+    valueFrom:
+      secretKeyRef:
+        name: {{ .Values.externalSecret.k8sSecretName }}
+        key: host
+  - name: DB_PASSWORD
+    valueFrom:
+      secretKeyRef:
+        name: {{ .Values.externalSecret.k8sSecretName }}
+        key: password
+```
+
+---
+
+### 7. Troubleshooting & Verification Matrix
+
+| Issue / Error | Root Cause | Solution |
+| :--- | :--- | :--- |
+| `no matches for kind "SecretStore"` | Outdated API version or missing CRDs | Use `apiVersion: external-secrets.io/v1` or install CRDs (`installCRDs: true`) |
+| `InvalidIdentityToken` | Missing OIDC Provider in AWS IAM | Run `eksctl utils associate-iam-oidc-provider` |
+| `InvalidProviderConfig` | Mismatched Trust Policy or missing Pod restarting | Verify IAM Trust Policy `:sub` claim & run `kubectl rollout restart deployment` |
+
 
